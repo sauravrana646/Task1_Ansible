@@ -1,0 +1,86 @@
+- hosts : all
+  tasks :
+  - name: Create dvd mountpoint
+    file:
+      path: /dvd
+      state: directory
+  - name: Mount DVD read-only
+    mount:
+      path: /dvd/
+      src: /dev/sr0
+      state: mounted
+      fstype: iso9660
+  - name: dvd1
+    yum_repository:
+      name: dvd1
+      description: YUM repo
+      baseurl: file:///dvd/AppStream
+      gpgcheck: no
+
+  - name: dvd2
+    yum_repository:
+      name: dvd2
+      description: YUM repo
+      baseurl: file:///dvd/BaseOS
+      gpgcheck: no
+
+  - name: Docker repository
+    yum_repository:
+      name: Docker
+      description: Docker YUM repo
+      baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+      gpgcheck: no
+
+  - name: Install python for docker
+    package:
+      name: python36
+      state: present
+
+  - name: Install git
+    package:
+      name: git
+      state: present
+
+  - name: Install docker-py
+    pip:
+      name: docker
+      state: present
+
+  - name: Install Docker on node
+    package:
+      name: docker-ce-18.06.3.ce-3.el7.x86_64
+      state: present
+
+  - name: Start docker service
+    service:
+      name: docker
+      state: restarted
+      enabled: yes
+
+  - name: pulling image httpd
+    docker_image:
+      name: httpd
+      source: pull
+  
+  - name: Clean mount
+    file:
+      path: /root/dockermount/
+      state: absent
+
+  - name: Create directory to mount
+    file:
+      path: /root/dockermount/
+      state: directory
+
+  - name: Copy files to mountfolder
+    command : git clone https://github.com/sauravrana646/reboot.git /root/dockermount/
+
+  - name: launch container
+    docker_container:
+      name: webserver
+      image: httpd
+      state: started
+      published_ports: 
+        - 8092:80
+      volumes :
+        - /root/dockermount/:/usr/local/apache2/htdocs/
